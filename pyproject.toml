@@ -1,0 +1,28 @@
+[project]
+name = "trend-attention"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Ralf", email = "ralf.kellner@uni-passau.de" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "dataclasses>=0.8",
+    "numpy>=2.2.3",
+    "pyyaml>=6.0.2",
+    "torch>=2.6.0",
+    "typing>=3.10.0.0",
+]
+
+[project.scripts]
+trend-attention = "trend_attention:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "ipykernel>=6.29.5",
+]
