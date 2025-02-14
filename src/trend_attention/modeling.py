@@ -4,6 +4,10 @@ from dataclasses import dataclass
 from typing import Union, List
 import yaml
 import json
+import os
+import logging
+logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
+
 
 class TrendAttentionConfig:
     def __init__(
@@ -48,6 +52,22 @@ class TrendAttentionConfig:
         self.n_layers = n_layers
         assert task in ("regression", "binary_classification"), "Currently only regression or binary_classification tasks are implemented."
         self.task = task
+
+        self.config_dictionary = {
+            "input_dim": input_dim,
+            "input_activation_name": input_activation_name,
+            "hidden_feature_dim": hidden_feature_dim,
+            "hidden_activation_function_name": hidden_activation_function_name,
+            "embedding_dim": embedding_dim,
+            "seq_len": seq_len,
+            "num_heads": num_heads,
+            "masked_attention": masked_attention,
+            "use_bias": use_bias,
+            "attention_dropout": attention_dropout,
+            "feature_engineering_dropout": feature_engineering_dropout,
+            "n_layers": n_layers,
+            "task": task
+        }
 
     @classmethod
     def from_file(cls, file_path):
@@ -186,6 +206,7 @@ class FeatureEngineeringAttentionLayer(nn.Module):
 class TrendAttentionDecoder(nn.Module):
     def __init__(self, config, device = None, return_hidden_states = False):
         super().__init__()
+        self.config = config
         self.input_embedding_layer = FeatureEmbeddings(config, device)
         self.positional_embedding_layer = PositionalEncoding(config, device)
         self.attention_layers = nn.ModuleList([FeatureEngineeringAttentionLayer(config, device) for _ in range(config.n_layers)])
@@ -228,6 +249,7 @@ class TrendAttentionClassifierOutput:
 class TrendAttentionClassifier(nn.Module):
     def __init__(self, config, device = None, return_hidden_states = False):
         super().__init__()
+        self.config = config
         self.decoder = TrendAttentionDecoder(config, device, return_hidden_states = return_hidden_states)
         self.head = TrendAttentionHead(config, device)
         self.return_hidden_states = return_hidden_states
@@ -256,6 +278,52 @@ class TrendAttentionClassifier(nn.Module):
         )
 
         return output
+    
+    def save_model(self, save_path: str):
+        """
+        Saves model state_dict and configuration file in the specified directory.
+        """
+        os.makedirs(save_path, exist_ok=True)
+
+        # Save config as YAML
+        config_file = os.path.join(save_path, "config.yaml")
+        with open(config_file, "w") as f:
+            yaml.dump(self.config.config_dictionary, f)
+
+        # Save model state_dict
+        model_file = os.path.join(save_path, "model.pth")
+        torch.save(self.state_dict(), model_file)
+
+        print(f"Model and config saved in: {save_path}")
+
+    @classmethod
+    def load_model(cls, save_path, device="cpu"):
+        """
+        Loads a saved model and its configuration.
+        """
+        # Load config
+        config_file = os.path.join(save_path, "config.yaml")
+        if not os.path.exists(config_file):
+            raise FileNotFoundError(f"Config file not found in {save_path}")
+
+        with open(config_file, "r") as f:
+            config_dict = yaml.safe_load(f)
+
+        # Initialize model with loaded config
+        config = TrendAttentionConfig(**config_dict)
+        model = cls(config, device=device)
+
+        # Load model state_dict
+        model_file = os.path.join(save_path, "model.pth")
+        if not os.path.exists(model_file):
+            raise FileNotFoundError(f"Model file not found in {save_path}")
+
+        model.load_state_dict(torch.load(model_file, map_location=device))
+        model.to(device)
+        model.eval()
+
+        print(f"Model successfully loaded from {save_path}")
+        return model
 
 
     

@@ -1,0 +1,13 @@
+attention_dropout: 0.25
+embedding_dim: 4
+feature_engineering_dropout: 0.25
+hidden_activation_function_name: LeakyReLU
+hidden_feature_dim: 10
+input_activation_name: Identity
+input_dim: 5
+masked_attention: true
+n_layers: 2
+num_heads: 2
+seq_len: 5
+task: binary_classification
+use_bias: false
